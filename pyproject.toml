@@ -9,3 +9,5 @@ dependencies = [
     "beautifulsoup4==4.13.4",
     "requests==2.32.4",
 ]
+[tool.black]
+target-version = ["py311"]
