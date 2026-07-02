@@ -60,3 +60,13 @@ def get_images_from_html(html, base_url):
         abs_url = urljoin(base_url, orig_url)
         abs_urls.append(abs_url)
     return abs_urls
+
+
+def extract_page_data(html, page_url):
+    extracted_page_data = {}
+    extracted_page_data["url"] = page_url
+    extracted_page_data["heading"] = get_heading_from_html(html)
+    extracted_page_data["first_paragraph"] = get_first_paragraph_from_html(html)
+    extracted_page_data["outgoing_links"] = get_urls_from_html(html, page_url)
+    extracted_page_data["image_urls"] = get_images_from_html(html, page_url)
+    return extracted_page_data
