@@ -86,4 +86,18 @@ def get_html(url):
     return r.text
 
 
+def crawl_page(base_url, current_url=None, page_data=None):
+    page_data = {}
+    if base_url not in current_url:
+        return
+    current_url_norm = normalize(current_url)
+    if current_url_norm in page_data.keys():
+        return
+    html = get_html(current_url_norm)
+    print(html)
+    current_url_page_data = extract_page_data(html, current_url_norm)
+    page_data[current_url_norm] = current_url_page_data
+
+
+
 
