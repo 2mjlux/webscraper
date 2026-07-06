@@ -1,5 +1,5 @@
 import sys
-from crawl import get_html
+from crawl import crawl_page
 
 
 def main():
@@ -12,8 +12,10 @@ def main():
         print("too many arguments provided")
         sys.exit(1)
     print(f"starting crawl of: {sys.argv[1]}")
-    result = get_html(sys.argv[1])
-    print(result)
+    result = crawl_page(sys.argv[1])
+    for page in result.values():
+        print(f"URL: {page['url']}, heading: {page['heading']}")
+    print(f"Number fo URLs crawled: {len(result.keys())}")
 
 
 if __name__ == "__main__":

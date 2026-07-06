@@ -87,16 +87,24 @@ def get_html(url):
 
 
 def crawl_page(base_url, current_url=None, page_data=None):
-    page_data = {}
-    if base_url not in current_url:
-        return
-    current_url_norm = normalize(current_url)
+    if page_data is None:
+        page_data = {}
+    if current_url is None:
+        current_url = base_url
+    parsed_current_url = urlparse(current_url)
+    parsed_base_url = urlparse(base_url)
+    if parsed_current_url.netloc != parsed_base_url.netloc:
+        return page_data
+    current_url_norm = normalize_url(current_url)
     if current_url_norm in page_data.keys():
-        return
-    html = get_html(current_url_norm)
-    print(html)
-    current_url_page_data = extract_page_data(html, current_url_norm)
+        return page_data
+    html = get_html(current_url)
+    print(f"crawling {current_url}")
+    current_url_page_data = extract_page_data(html, current_url)
     page_data[current_url_norm] = current_url_page_data
+    for url in current_url_page_data["outgoing_links"]:
+        page_data = crawl_page(base_url, url, page_data)
+    return page_data
 
 
 
