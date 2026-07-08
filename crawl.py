@@ -1,6 +1,5 @@
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup, Tag
-import requests
 import asyncio
 import aiohttp
 
@@ -76,15 +75,18 @@ def extract_page_data(html, page_url):
 
 
 class AsyncCrawler:
-    def __init__(self, base_url):
+    def __init__(self, base_url, max_concurrency, max_pages):
         self.base_url = base_url
         self.parsed_base_url = urlparse(base_url)
         self.base_domain = self.parsed_base_url.netloc
         self.page_data = {}
         self.lock = asyncio.Lock()
-        self.max_concurrency = 10
+        self.max_concurrency = max_concurrency
         self.semaphore = asyncio.Semaphore(self.max_concurrency)
         self.session = None
+        self.max_pages = max_pages
+        self.should_stop = False
+        self.all_tasks = set()
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -95,6 +97,14 @@ class AsyncCrawler:
 
     async def add_page_visit(self, normalized_url):
         async with self.lock:
+            if self.should_stop:
+                return False
+            if len(self.page_data) >= self.max_pages:
+                self.should_stop = True
+                print("Reached maximum number of pages to crawl.")
+                for task in self.all_tasks:
+                    task.cancel()
+                return False
             if normalized_url not in self.page_data:
                 self.page_data[normalized_url] = {}
                 return True
@@ -119,34 +129,52 @@ class AsyncCrawler:
             return None
 
     async def crawl_page(self, current_url):
-        if current_url is None:
-            current_url = self.base_url
-        parsed_current_url = urlparse(current_url)
-        if parsed_current_url.netloc != self.base_domain:
+        if self.should_stop:
             return
-        current_url_norm = normalize_url(current_url)
-        is_new = await self.add_page_visit(current_url_norm)
-        if not is_new:
-            return
-        async with self.semaphore:
-            html = await self.get_html(current_url)
-            if html is None:
+        try:
+            # Register this task in all_tasks so it can be cancelled later if
+            # max_pages is reached. Note: the parent that spawned this task (via
+            # asyncio.create_task in the loop below) may have already added this
+            # exact same Task object to all_tasks. That's intentional and safe:
+            # sets automatically ignore duplicate entries, and there's a brief
+            # window after a task is created but before it starts running where
+            # only the parent's registration would exist. Registering here too
+            # closes that gap, guaranteeing this task is tracked as soon as its
+            # own code starts executing, even if the parent's registration
+            # hadn't happened yet for some reason.
+            current_task = asyncio.current_task()
+            self.all_tasks.add(current_task)
+            if current_url is None:
+                current_url = self.base_url
+            parsed_current_url = urlparse(current_url)
+            if parsed_current_url.netloc != self.base_domain:
                 return
-            print(f"crawling {current_url}")
-            current_url_page_data = extract_page_data(html, current_url)
-            async with self.lock:
-                self.page_data[current_url_norm] = current_url_page_data
-            tasks = []
-            for url in current_url_page_data["outgoing_links"]:
-                task = asyncio.create_task(self.crawl_page(url))
-                tasks.append(task)
-        await asyncio.gather(*tasks)
+            current_url_norm = normalize_url(current_url)
+            is_new = await self.add_page_visit(current_url_norm)
+            if not is_new:
+                return
+            async with self.semaphore:
+                html = await self.get_html(current_url)
+                if html is None:
+                    return
+                print(f"crawling {current_url}")
+                current_url_page_data = extract_page_data(html, current_url)
+                async with self.lock:
+                    self.page_data[current_url_norm] = current_url_page_data
+                tasks = []
+                for url in current_url_page_data["outgoing_links"]:
+                    task = asyncio.create_task(self.crawl_page(url))
+                    tasks.append(task)
+                    self.all_tasks.add(task)
+            await asyncio.gather(*tasks)
+        finally:
+            self.all_tasks.remove(current_task)
 
     async def crawl(self):
         await self.crawl_page(self.base_url)
         return self.page_data
 
 
-async def crawl_site_async(url):
-    async with AsyncCrawler(url) as async_crawler:
+async def crawl_site_async(url, max_concurrency, max_pages):
+    async with AsyncCrawler(url, max_concurrency, max_pages) as async_crawler:
         return await async_crawler.crawl()
