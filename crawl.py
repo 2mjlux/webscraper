@@ -141,3 +141,12 @@ class AsyncCrawler:
                 task = asyncio.create_task(self.crawl_page(url))
                 tasks.append(task)
         await asyncio.gather(*tasks)
+
+    async def crawl(self):
+        await self.crawl_page(self.base_url)
+        return self.page_data
+
+
+async def crawl_site_async(url):
+    async with AsyncCrawler(url) as async_crawler:
+        return await async_crawler.crawl()

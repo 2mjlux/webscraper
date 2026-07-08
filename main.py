@@ -1,9 +1,10 @@
 import sys
-from crawl import crawl_page
+import asyncio
+from crawl import crawl_site_async
 
 
-def main():
-    print("Hello from webscraper!")
+async def main():
+    print("Hello from the async webscraper!")
 
     if len(sys.argv) < 2:
         print("no website provided")
@@ -12,11 +13,11 @@ def main():
         print("too many arguments provided")
         sys.exit(1)
     print(f"starting crawl of: {sys.argv[1]}")
-    result = crawl_page(sys.argv[1])
-    for page in result.values():
+    page_data = await crawl_site_async(sys.argv[1])
+    for page in page_data.values():
         print(f"URL: {page['url']}, heading: {page['heading']}")
-    print(f"Number fo URLs crawled: {len(result.keys())}")
+    print(f"Number of URLs crawled: {len(page_data)}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
