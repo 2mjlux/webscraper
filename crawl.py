@@ -95,7 +95,8 @@ class AsyncCrawler:
 
     async def add_page_visit(self, normalized_url):
         async with self.lock:
-            if normalized_url not in self.page_data.keys():
+            if normalized_url not in self.page_data:
+                self.page_data[normalized_url] = {}
                 return True
             else:
                 return False
@@ -121,8 +122,7 @@ class AsyncCrawler:
         if current_url is None:
             current_url = self.base_url
         parsed_current_url = urlparse(current_url)
-        parsed_base_url = urlparse(self.base_url)
-        if parsed_current_url.netloc != parsed_base_url.netloc:
+        if parsed_current_url.netloc != self.base_domain:
             return
         current_url_norm = normalize_url(current_url)
         is_new = await self.add_page_visit(current_url_norm)
