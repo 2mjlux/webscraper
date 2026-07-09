@@ -14,7 +14,8 @@ async def main():
     print(f"starting crawl of: {sys.argv[1]}")
     page_data = await crawl_site_async(sys.argv[1], max_concurrency, max_pages)
     for page in page_data.values():
-        print(f"URL: {page['url']}, heading: {page['heading']}")
+        if page:
+            print(f"URL: {page['url']}, heading: {page['heading']}")
     print(f"Number of URLs crawled: {len(page_data)}")
 
 

@@ -87,6 +87,7 @@ class AsyncCrawler:
         self.max_pages = max_pages
         self.should_stop = False
         self.all_tasks = set()
+        self.pages_crawled = 0
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -99,7 +100,7 @@ class AsyncCrawler:
         async with self.lock:
             if self.should_stop:
                 return False
-            if len(self.page_data) >= self.max_pages:
+            if len(self.pages_crawled) >= self.max_pages:
                 self.should_stop = True
                 print("Reached maximum number of pages to crawl.")
                 for task in self.all_tasks:
@@ -161,17 +162,22 @@ class AsyncCrawler:
                 current_url_page_data = extract_page_data(html, current_url)
                 async with self.lock:
                     self.page_data[current_url_norm] = current_url_page_data
+                    self.pages_crawled += 1
                 tasks = []
                 for url in current_url_page_data["outgoing_links"]:
                     task = asyncio.create_task(self.crawl_page(url))
                     tasks.append(task)
                     self.all_tasks.add(task)
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*tasks, return_exceptions=True)
         finally:
             self.all_tasks.remove(current_task)
 
     async def crawl(self):
-        await self.crawl_page(self.base_url)
+        task = asyncio.create_task(self.crawl_page(self.base_url))
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
         return self.page_data
 
 
