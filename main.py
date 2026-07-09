@@ -1,6 +1,7 @@
 import sys
 import asyncio
 from crawl import crawl_site_async
+from json_report import write_json_report
 
 
 async def main():
@@ -13,10 +14,10 @@ async def main():
     max_pages = int(sys.argv[3])
     print(f"starting crawl of: {sys.argv[1]}")
     page_data = await crawl_site_async(sys.argv[1], max_concurrency, max_pages)
-    for page in page_data.values():
-        if page:
-            print(f"URL: {page['url']}, heading: {page['heading']}")
-    print(f"Number of URLs crawled: {len(page_data)}")
+    for key, value in page_data.items():
+        if not isinstance(value, dict) or "url" not in value:
+            print(f"BAD ENTRY -> key: {key!r}, value: {value!r}")
+    write_json_report(page_data)
 
 
 if __name__ == "__main__":

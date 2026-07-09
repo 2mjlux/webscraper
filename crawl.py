@@ -1,5 +1,5 @@
 from urllib.parse import urlparse, urljoin
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 import asyncio
 import aiohttp
 
@@ -87,7 +87,7 @@ class AsyncCrawler:
         self.max_pages = max_pages
         self.should_stop = False
         self.all_tasks = set()
-        self.pages_crawled = 0
+        self.visited = set()
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -100,14 +100,14 @@ class AsyncCrawler:
         async with self.lock:
             if self.should_stop:
                 return False
-            if self.pages_crawled >= self.max_pages:
+            if len(self.page_data) >= self.max_pages:
                 self.should_stop = True
                 print("Reached maximum number of pages to crawl.")
                 for task in self.all_tasks:
                     task.cancel()
                 return False
-            if normalized_url not in self.page_data:
-                self.page_data[normalized_url] = {}
+            if normalized_url not in self.visited:
+                self.visited.add(normalized_url)
                 return True
             else:
                 return False
@@ -162,7 +162,6 @@ class AsyncCrawler:
                 current_url_page_data = extract_page_data(html, current_url)
                 async with self.lock:
                     self.page_data[current_url_norm] = current_url_page_data
-                    self.pages_crawled += 1
                 tasks = []
                 for url in current_url_page_data["outgoing_links"]:
                     task = asyncio.create_task(self.crawl_page(url))
