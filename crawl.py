@@ -100,7 +100,7 @@ class AsyncCrawler:
         async with self.lock:
             if self.should_stop:
                 return False
-            if len(self.pages_crawled) >= self.max_pages:
+            if self.pages_crawled >= self.max_pages:
                 self.should_stop = True
                 print("Reached maximum number of pages to crawl.")
                 for task in self.all_tasks:
