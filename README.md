@@ -1,6 +1,6 @@
 # Async Web Scraper
 
-This project is an asynchronous web scraper that crawls pages from a single domain and collects structured page data.
+This project is an asynchronous web scraper that crawls pages from a single domain, collects structured page data, and exports the results to a JSON report.
 
 ## How it works
 
@@ -21,6 +21,7 @@ This project is an asynchronous web scraper that crawls pages from a single doma
    - waits for them with `asyncio.gather(...)`
 7. Leaving `async with` runs `__aexit__`, which closes the session
 8. The final `page_data` dictionary is returned to `main()`
+9. `main()` calls `write_json_report(page_data)` to export the results
 
 ## Key async concepts used
 
@@ -42,6 +43,17 @@ This allows the crawler to:
 - avoid visiting the same page twice
 - store results for all crawled pages in one place
 
+## JSON reporting
+
+Once crawling finishes, `write_json_report(page_data, filename="report.json")`:
+
+- Converts `page_data.values()` into a list, sorted by each page's `"url"`
+- Writes that list to a JSON file (`report.json` by default) using `json.dump(..., indent=2)`
+
+This produces a human-readable JSON array of page objects, making the crawl results easy to inspect or share.
+
 ## Purpose
 
-The goal of the async design is to crawl pages faster than a sequential crawler while still safely managing shared data and limiting request concurrency.
+The goal of the async design is to crawl pages faster than a sequential crawler while still safely managing shared data and limiting request concurrency. The JSON report step then turns that in-memory data into a durable, shareable artifact.
+
+This project was originally built as part of the boot.dev curriculum.
